@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.vscode/
+.env
+.mcp.json
+.claude/
+example-requests-har.json
