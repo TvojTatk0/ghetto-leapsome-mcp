@@ -122,13 +122,32 @@ export interface ReviewQuestion {
   answerType: string | null;
 }
 
+export interface ReviewAnswer {
+  _id?: string;
+  amount?: number;
+  content?: string;
+  answers?: string[];
+}
+
+export interface ReviewContributorAnswers {
+  role: string;
+  status: string;
+  user?: { _id: string; displayedName: string };
+  answers?: Record<string, ReviewAnswer>;
+}
+
 export interface ReviewDetail {
   _id: string;
   name: string;
   revieweeUser: { _id: string; displayedName: string; teamRole: { title: string } };
   managerUser: { _id: string; displayedName: string };
   questions: { skills: ReviewQuestion[] };
-  contributorDetails: { status: string; answers: unknown; role: string };
+  contributors?: { all?: ReviewContributorAnswers[] };
+  contributorDetails: {
+    status: string;
+    role: string;
+    answers?: Record<string, ReviewAnswer>;
+  };
   availableSkills: { localTeam: { name: string; _id: string }[] };
   status: {
     globalStatus: string;

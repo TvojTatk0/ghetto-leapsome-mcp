@@ -4,6 +4,8 @@ import type {
   CheckinTemplate,
   ReviewTodoItem,
   ReviewDetail,
+  ReviewAnswer,
+  ReviewQuestion,
   ReviewParticipantProgress,
   FeedbackItem,
   UserSearchResult,
@@ -85,6 +87,9 @@ export function formatCheckinDetail(d: CheckinDetail): string {
     `Status: ${d.status} | Next: ${d.cycle.nextTime} | ${d.cycle.duration}min ${d.cycle.frequency}`,
   );
   lines.push(`Participants: ${participantList}`);
+  if (d.groupToken) {
+    lines.push(`groupToken: ${d.groupToken} (use with get-past-meetings)`);
+  }
   lines.push('');
 
   for (const section of d.sections) {
@@ -155,8 +160,86 @@ export function formatReviewTodos(todos: ReviewTodoItem[]): string {
   return sections.join('\n\n');
 }
 
+interface AnsweringContributor {
+  role: string;
+  name: string;
+  status: string;
+  answers: Record<string, ReviewAnswer>;
+}
+
+function collectContributors(detail: ReviewDetail): AnsweringContributor[] {
+  const seen = new Set<string>();
+  const out: AnsweringContributor[] = [];
+
+  const add = (
+    role: string,
+    status: string,
+    user: { _id?: string; displayedName?: string } | undefined,
+    answers: Record<string, ReviewAnswer> | undefined,
+  ) => {
+    if (!answers || Object.keys(answers).length === 0) return;
+    const key = `${role}:${user?._id ?? user?.displayedName ?? role}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      role,
+      status,
+      name: user?.displayedName ?? role,
+      answers,
+    });
+  };
+
+  for (const c of detail.contributors?.all ?? []) {
+    add(c.role, c.status, c.user, c.answers);
+  }
+
+  const cd = detail.contributorDetails;
+  if (cd?.answers && Object.keys(cd.answers).length > 0) {
+    const selfUser =
+      cd.role === 'manager'
+        ? detail.managerUser
+        : cd.role === 'reviewee'
+          ? detail.revieweeUser
+          : undefined;
+    add(cd.role, cd.status, selfUser, cd.answers);
+  }
+
+  return out;
+}
+
+function formatAnswer(answer: ReviewAnswer, q: ReviewQuestion): string[] {
+  const parts: string[] = [];
+
+  if (
+    typeof answer.amount === 'number' &&
+    q.ratingRequirement !== 'hidden' &&
+    q.scale?.length
+  ) {
+    const match = q.scale.find((s) => s.value === answer.amount);
+    parts.push(
+      `Rating: ${answer.amount}${match ? ` — ${match.label}` : ''}`,
+    );
+  }
+
+  if (answer.answers?.length && q.multipleChoiceOptions?.length) {
+    const titles = answer.answers.map(
+      (id) =>
+        q.multipleChoiceOptions?.find((o) => o._id === id)?.title ?? id,
+    );
+    parts.push(`Selected: ${titles.join(', ')}`);
+  }
+
+  if (answer.content) {
+    const text = stripHtml(answer.content);
+    if (text) parts.push(text);
+  }
+
+  return parts;
+}
+
 export function formatReviewForm(detail: ReviewDetail): string {
   const lines: string[] = [];
+  const contributors = collectContributors(detail);
 
   lines.push(`# ${detail.name}`);
   lines.push(
@@ -166,6 +249,12 @@ export function formatReviewForm(detail: ReviewDetail): string {
   lines.push(
     `Status: ${detail.status.globalStatus} | Your role: ${detail.contributorDetails.role} (${detail.contributorDetails.status})`,
   );
+  if (contributors.length > 0) {
+    const labels = contributors
+      .map((c) => `${c.name} [${c.role}, ${c.status}]`)
+      .join(', ');
+    lines.push(`Contributors with submitted answers: ${labels}`);
+  }
   lines.push('');
 
   for (const q of detail.questions.skills) {
@@ -203,7 +292,27 @@ export function formatReviewForm(detail: ReviewDetail): string {
     }
 
     lines.push(`(id: ${q._id})`);
-    lines.push('');
+
+    const answered = contributors
+      .map((c) => ({ c, a: c.answers[q._id] }))
+      .filter((x): x is { c: AnsweringContributor; a: ReviewAnswer } => !!x.a);
+
+    if (answered.length > 0) {
+      lines.push('');
+      lines.push('#### Submitted answers');
+      for (const { c, a } of answered) {
+        lines.push(`**${c.name}** [${c.role}]`);
+        const parts = formatAnswer(a, q);
+        if (parts.length === 0) {
+          lines.push('(no content)');
+        } else {
+          for (const p of parts) lines.push(p);
+        }
+        lines.push('');
+      }
+    } else {
+      lines.push('');
+    }
   }
 
   return lines.join('\n');
@@ -229,7 +338,7 @@ export function formatReviewHistory(
       const date = formatDate(inst.date);
       const status = inst.inProgress ? 'In Progress' : 'Completed';
       lines.push(
-        `## ${inst.name}\n${date} | ${status} | Progress: ${formatPct(inst.progress ?? 0)}`,
+        `## ${inst.name}\n${date} | ${status} | Progress: ${formatPct(inst.progress ?? 0)} | cycleId: ${inst._id}`,
       );
 
       if (inst.contributors.length > 0) {
