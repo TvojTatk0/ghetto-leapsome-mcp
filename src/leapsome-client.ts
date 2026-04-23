@@ -390,6 +390,16 @@ export class LeapsomeClient {
     );
   }
 
+  async getSkillsForUser(userId: string): Promise<unknown> {
+    return this.get<unknown>(
+      `/skills/get/skills/list/${userId}/show/goals`,
+    );
+  }
+
+  async getSkillHistory(skillId: string, userId: string): Promise<unknown> {
+    return this.get<unknown>(`/skills/history/${skillId}/${userId}`);
+  }
+
   async searchUsers(query: string): Promise<UserSearchResult[]> {
     const data = await this.post<
       { value: string; label: string; desc: string; type: string; link: string }[]

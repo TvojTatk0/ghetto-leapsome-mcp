@@ -27,6 +27,9 @@ const commands: Record<string, () => Promise<unknown>> = {
   team: () => client.getDirectTeam(),
   goals: () => client.getGoalsForUser(args[0] ?? auth.userId),
   'past-meetings': () => client.getPastCheckins(args[0]),
+  skills: () => client.getSkillsForUser(args[0] ?? auth.userId),
+  'skill-history': () =>
+    client.getSkillHistory(args[0], args[1] ?? auth.userId),
 };
 
 if (!command || !commands[command]) {
