@@ -38,11 +38,15 @@ Two API surfaces exist:
 
 ### Known Review Cycle Endpoints
 - `GET /reviewcycles/get/list/toDo/default/none/0` — list pending review tasks
-- `GET /reviewcycles/get/details/{cycleId}/reviewee/{revieweeId}/manager/{managerId}/viewAs/manager` — get review form with questions
+- `GET /reviewcycles/get/details/{cycleId}/reviewee/{revieweeId}/manager/{managerId}/viewAs/{role}` — get review form with questions. `{role}` must be one of `reviewee`, `manager`, `peer` and must match the current user's actual role on the review — if it doesn't, the API still returns 200 but with the `revieweeUser`/`managerUser` fields stripped. The client tries `reviewee` → `manager` → `peer` in sequence and returns the first response with a valid shape.
 - `POST /reviewcycles/participantprogress` — get review history for a user (POST body includes userFilter with user ID and displayedName)
 
 ### Known Feedback Endpoints
 - `POST /feedback/get/user/all/sets/all-filtered` — list all company feedback (praise, instant feedback, private notes). Returns full feed, filter client-side by `thanksNoteReceivers[]._id` or `receiver._id` to get feedback for a specific person.
+
+### Known Skills (Career Framework) Endpoints
+- `GET /skills/get/skills/list/{userId}/show/goals` — returns the full list of skills (capabilities) relevant to the user's specialization. Each skill has: `_id`, `name`, `category`, `description` (general attributes), and `descriptionCustomRoles` — an object keyed by role ID with `{ main: "<html>" }` per-level descriptions. The role IDs are stable across skills and map to the level; the mapping is exposed through `/skills/history/...` below.
+- `GET /skills/history/{skillId}/{userId}` — returns `{ skill: { roleDescriptions: [...] }, signals: [...], timelineData: [...], timelineLabels: [...] }`. `roleDescriptions` lists every level with `name`, `description`, and a `highlighted: boolean` flag — **`highlighted: true` identifies the user's current level** for that capability. `signals` is the full feedback timeline (manager + reviewee comments) across all past cycles with `sender`, `content` (HTML), `created_at`, `type` (`reviewReviewee`/`reviewManager`/`structured`), and `amount` (50/100 — likely partial/full rating). `timelineData` + `timelineLabels` are the aligned numeric rating series.
 
 ### Known User Endpoints
 - `POST /users/usersAndContent` — search users/content by name. Body: `{"query":"search term"}`. Response `data[]` items have `{ value, label, desc, type, link }`. Filter by `type === "user"` to get only users. `value` = user ID, `label` = name, `desc` = title.

@@ -238,6 +238,12 @@ function formatAnswer(answer: ReviewAnswer, q: ReviewQuestion): string[] {
 }
 
 export function formatReviewForm(detail: ReviewDetail): string {
+  if (!detail?.revieweeUser || !detail?.managerUser) {
+    throw new Error(
+      "Review details missing revieweeUser/managerUser. The current user likely has no role on this review, or the viewAs perspective is wrong.",
+    );
+  }
+
   const lines: string[] = [];
   const contributors = collectContributors(detail);
 

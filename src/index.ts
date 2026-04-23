@@ -60,18 +60,18 @@ server.registerTool("list-pending-reviews", {
 });
 
 server.registerTool("get-review-form", {
-  description: "Get the review form for a specific review cycle and reviewee, including all questions with their requirements, scales, and multiple choice options. Use list-pending-reviews first to get the IDs.",
+  description: "Get the review form for a specific review cycle and reviewee, including all questions with their requirements, scales, and multiple choice options. Use list-pending-reviews first to get the IDs. Automatically tries reviewee/manager/peer perspectives based on the current user's role.",
   inputSchema: {
     cycleId: z.string().describe("The review cycle ID"),
     revieweeId: z.string().describe("The reviewee's user ID"),
     managerId: z.string().optional().describe("The manager/reviewer user ID. Defaults to the current user."),
+    viewAs: z.enum(["reviewee", "manager", "peer"]).optional().describe("Force a specific perspective. If omitted, tries reviewee/manager/peer in order."),
   },
-}, async ({ cycleId, revieweeId, managerId }) => {
-  const detail = await client.getReviewDetails(
-    cycleId,
-    revieweeId,
-    managerId ?? auth.userId,
-  );
+}, async ({ cycleId, revieweeId, managerId, viewAs }) => {
+  const effectiveManagerId = managerId ?? auth.userId;
+  const detail = viewAs
+    ? await client.getReviewDetails(cycleId, revieweeId, effectiveManagerId, viewAs)
+    : await client.getReviewDetailsAuto(cycleId, revieweeId, effectiveManagerId);
   return { content: [{ type: "text", text: formatReviewForm(detail) }] };
 });
 
@@ -131,6 +131,27 @@ server.registerTool("get-past-meetings", {
 }, async ({ groupToken }) => {
   const checkins = await client.getPastCheckins(groupToken);
   return { content: [{ type: "text", text: formatPastCheckins(checkins) }] };
+});
+
+server.registerTool("list-skills-for-user", {
+  description: "List the career framework skills/capabilities for a user. Returns the full list of capabilities relevant to their specialization, with level descriptions and 'not there yet' indicators. Use this to understand what current and next level look like for a person when writing reviews or planning growth.",
+  inputSchema: {
+    userId: z.string().optional().describe("The user ID. Defaults to the current user."),
+  },
+}, async ({ userId }) => {
+  const data = await client.getSkillsForUser(userId ?? auth.userId);
+  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+});
+
+server.registerTool("get-skill-history", {
+  description: "Get the rating history for a specific skill/capability for a user across review cycles. Skill IDs come from get-review-form (capability question IDs) or list-skills-for-user. Useful for seeing how someone has been rated on a capability over time.",
+  inputSchema: {
+    skillId: z.string().describe("The skill/capability ID (e.g. from get-review-form question IDs or list-skills-for-user)"),
+    userId: z.string().optional().describe("The user ID. Defaults to the current user."),
+  },
+}, async ({ skillId, userId }) => {
+  const data = await client.getSkillHistory(skillId, userId ?? auth.userId);
+  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
 });
 
 const transport = new StdioServerTransport();

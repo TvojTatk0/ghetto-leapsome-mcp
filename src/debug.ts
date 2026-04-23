@@ -18,7 +18,7 @@ const commands: Record<string, () => Promise<unknown>> = {
   templates: () => client.getCheckinTemplates(),
   reviews: () => client.getReviewTodos(),
   'review-form': () =>
-    client.getReviewDetails(args[0], args[1], args[2] ?? auth.userId),
+    client.getReviewDetailsAuto(args[0], args[1], args[2] ?? auth.userId),
   'review-history': () =>
     client.getReviewHistory(args[0], args.slice(1).join(' ')),
   feedback: () => client.getFeedbackForUser(args[0] ?? auth.userId),
@@ -27,6 +27,9 @@ const commands: Record<string, () => Promise<unknown>> = {
   team: () => client.getDirectTeam(),
   goals: () => client.getGoalsForUser(args[0] ?? auth.userId),
   'past-meetings': () => client.getPastCheckins(args[0]),
+  skills: () => client.getSkillsForUser(args[0] ?? auth.userId),
+  'skill-history': () =>
+    client.getSkillHistory(args[0], args[1] ?? auth.userId),
 };
 
 if (!command || !commands[command]) {
