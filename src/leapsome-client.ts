@@ -294,9 +294,43 @@ export class LeapsomeClient {
     cycleId: string,
     revieweeId: string,
     managerId: string,
+    viewAs: "reviewee" | "manager" | "peer" = "reviewee",
   ): Promise<ReviewDetail> {
     return this.get<ReviewDetail>(
-      `/reviewcycles/get/details/${cycleId}/reviewee/${revieweeId}/manager/${managerId}/viewAs/manager`,
+      `/reviewcycles/get/details/${cycleId}/reviewee/${revieweeId}/manager/${managerId}/viewAs/${viewAs}`,
+    );
+  }
+
+  async getReviewDetailsAuto(
+    cycleId: string,
+    revieweeId: string,
+    managerId: string,
+  ): Promise<ReviewDetail> {
+    const attempts: ("reviewee" | "manager" | "peer")[] = [
+      "reviewee",
+      "manager",
+      "peer",
+    ];
+    let lastError: unknown;
+    for (const viewAs of attempts) {
+      try {
+        const detail = await this.getReviewDetails(
+          cycleId,
+          revieweeId,
+          managerId,
+          viewAs,
+        );
+        if (detail?.revieweeUser && detail.managerUser) {
+          return detail;
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw new Error(
+      `Could not fetch review details as reviewee, manager, or peer. ` +
+        `The current user may not have any role on this review, or the IDs may be wrong. ` +
+        (lastError ? `Last error: ${String(lastError)}` : ""),
     );
   }
 

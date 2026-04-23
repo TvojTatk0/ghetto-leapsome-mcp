@@ -60,18 +60,18 @@ server.registerTool("list-pending-reviews", {
 });
 
 server.registerTool("get-review-form", {
-  description: "Get the review form for a specific review cycle and reviewee, including all questions with their requirements, scales, and multiple choice options. Use list-pending-reviews first to get the IDs.",
+  description: "Get the review form for a specific review cycle and reviewee, including all questions with their requirements, scales, and multiple choice options. Use list-pending-reviews first to get the IDs. Automatically tries reviewee/manager/peer perspectives based on the current user's role.",
   inputSchema: {
     cycleId: z.string().describe("The review cycle ID"),
     revieweeId: z.string().describe("The reviewee's user ID"),
     managerId: z.string().optional().describe("The manager/reviewer user ID. Defaults to the current user."),
+    viewAs: z.enum(["reviewee", "manager", "peer"]).optional().describe("Force a specific perspective. If omitted, tries reviewee/manager/peer in order."),
   },
-}, async ({ cycleId, revieweeId, managerId }) => {
-  const detail = await client.getReviewDetails(
-    cycleId,
-    revieweeId,
-    managerId ?? auth.userId,
-  );
+}, async ({ cycleId, revieweeId, managerId, viewAs }) => {
+  const effectiveManagerId = managerId ?? auth.userId;
+  const detail = viewAs
+    ? await client.getReviewDetails(cycleId, revieweeId, effectiveManagerId, viewAs)
+    : await client.getReviewDetailsAuto(cycleId, revieweeId, effectiveManagerId);
   return { content: [{ type: "text", text: formatReviewForm(detail) }] };
 });
 
