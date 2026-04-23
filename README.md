@@ -31,6 +31,8 @@ Connects Claude to your Leapsome data so you can pull context for writing perfor
 | Reviews | `get-review-history` | Past review cycles for trajectory context |
 | Feedback | `get-feedback-for-user` | Praise and structured feedback they received |
 | Goals | `get-goals-for-user` | OKRs and how they're tracking |
+| Career | `list-skills-for-user` | Full career framework for their specialization (all capabilities, level descriptions, which level they're currently at via a `highlighted` flag) |
+| Career | `get-skill-history` | Full history of manager + self feedback on one capability across all past cycles, plus the rating timeline |
 
 Read-only. Can't submit reviews, send feedback, or do anything destructive. Just reads.
 
@@ -82,10 +84,12 @@ The whole point of this thing. When review season arrives and you need to write 
 1. `list-direct-team` -- remember who reports to you
 2. `list-pending-reviews` -- see what's due
 3. `get-review-form` -- see what questions you need to answer
-4. `get-past-meetings` + `get-meeting-details` -- pull 3 months of 1:1 notes
-5. `get-feedback-for-user` -- see what praise they got from peers
-6. `get-review-history` -- check last quarter's review for continuity
-7. `get-goals-for-user` -- see if they hit their OKRs
+4. `list-skills-for-user` -- framework context: current level, next level, expectations per capability
+5. `get-skill-history` -- per-capability feedback timeline across past cycles (useful when you need to show growth on a specific skill)
+6. `get-past-meetings` + `get-meeting-details` -- pull 3 months of 1:1 notes
+7. `get-feedback-for-user` -- see what praise they got from peers
+8. `get-review-history` -- check last quarter's review for continuity
+9. `get-goals-for-user` -- see if they hit their OKRs
 
 Hand all of that to Claude and ask it to draft the review. Edit for accuracy and your voice. Submit. Repeat for the next 5 people. Go home at a reasonable hour for once.
 
@@ -116,6 +120,8 @@ pnpm debug goals <userId>                               # OKRs
 pnpm debug search <query>                               # find users
 pnpm debug list                                         # open meetings
 pnpm debug templates                                    # meeting templates
+pnpm debug skills [userId]                              # career framework for user
+pnpm debug skill-history <skillId> [userId]             # per-capability feedback timeline
 ```
 
 ### Rebuild after changes
